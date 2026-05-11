@@ -1,0 +1,698 @@
+---
+title: "Data 205 Final Project"
+author: "Karim MardamBey"
+format: html
+editor: visual
+---
+
+```{r}
+# upload necessary libraries needed for data analysis and visualization
+
+library(dplyr)
+library(tidyr)
+library(leaflet)
+library(ggplot2)
+library(ggfortify)
+library(lubridate)
+setwd("~/Desktop/Data 205")
+```
+
+
+
+```{r}
+# ingest both data sets needed for final project
+
+moco_crimes <- read.csv("mococrime.csv")
+moco_housing <- read.csv("mocohousing.csv")
+```
+
+```{r}
+# look at specific column names for both data sets
+colnames(moco_crimes)
+```
+
+```{r}
+colnames(moco_housing)
+```
+
+```{r}
+# rename column names for cleaner naming and graphing for both data sets
+
+names(moco_crimes) <- c("incident_id", "offense_code", "cr_number", "dispatch_time", "start_time", "end_time", "nibrs_code", "victims", "crime1", "crime2", "crime3", "police_district", "block_address", "city", "state", "zip_code", "agency", "place", "sector", "beat", "pra", "address_number", "street_prefix", "street_name", "street_suffix", "street_type", "latitude", "longitude", "police_district_number", "location")
+```
+
+```{r}
+names(moco_housing) <- c( "license_number", "ownership_type", "street_address", "address_line2", "city", "zip_code", "structure_type", "unit_count", "year_built","license_type", "license_status", "tax_account", "location")
+```
+
+```{r}
+# check to see if name changes worked
+colnames(moco_crimes)
+```
+
+```{r}
+colnames(moco_housing)
+```
+
+```{r}
+# remove NAs from both data sets in specific columns
+colSums(is.na(moco_crimes))
+```
+
+```{r}
+moco_crimes_clean <- moco_crimes %>%
+  filter(!is.na(zip_code), !is.na(address_number))
+```
+
+```{r}
+colSums(is.na(moco_housing))
+```
+
+```{r}
+moco_housing_clean <- moco_housing %>%
+  filter(!is.na(year_built))
+```
+
+```{r}
+# separate attached dates and times from the 3 columns to better access specific times
+
+moco_crimes_clean <- moco_crimes_clean %>%
+  separate(dispatch_time, into = c("dispatch_date", "dispatch_time_only"), sep = " ", remove = FALSE) %>%
+  separate(start_time, into = c("start_date", "start_time_only"), sep = " ", remove = FALSE) %>%
+  separate(end_time, into = c("end_date", "end_time_only"), sep = " ", remove = FALSE)
+```
+
+```{r}
+colSums(is.na(moco_crimes_clean))
+```
+
+
+```{r}
+moco_crimes_clean2 <- moco_crimes_clean %>%
+  filter(!is.na(dispatch_time_only), !is.na(end_time_only))
+```
+
+
+```{r}
+# timeline of the data
+unique(moco_crimes_clean2$dispatch_date)
+```
+
+```{r}
+unique(moco_crimes_clean2$city)
+```
+
+```{r}
+valid_cities <- c(
+  "SILVER SPRING","ROCKVILLE","BETHESDA","GAITHERSBURG","GERMANTOWN","POTOMAC","KENSINGTON","TAKOMA PARK","CHEVY CHASE","OLNEY",
+  "BURTONSVILLE","DERWOOD","POOLESVILLE","BROOKEVILLE","CLARKSBURG","SPENCERVILLE","DAMASCUS","BOYDS","CABIN JOHN","DICKERSON",
+  "SANDY SPRING","GLEN ECHO","MONROVIA","MOUNT AIRY","WOODBINE", "HYATTSVILLE","LAUREL","ADELPHI","LANHAM","WASHINGTON",
+  "NORTH BETHESDA","NORTH POTOMAC","DARNESTOWN","ASHTON", "BRINKLOW","GARRETT PARK","LAYTONSVILLE","BEALLSVILLE",
+  "WASHINGTON GROVE","BELTSVILLE","HIGHLAND","COLESVILLE", "WHEATON","FREDERICK","COLUMBIA","HAGERSTOWN"
+)
+```
+
+```{r}
+moco_crimes_clean2 <- moco_crimes_clean2 %>%
+  mutate(city = recode(city,
+    "SILVER SPRING" = "Silver Spring", "ROCKVILLE" = "Rockville", "MONTGOMERY VILLAGE" = "Montgomery Village", "BETHESDA" = "Bethesda", 
+    "GAITHERSBURG" = "Gaithersburg", "GERMANTOWN" = "Germantown", "POTOMAC" = "Potomac", "KENSINGTON" = "Kensington", "TAKOMA PARK" = "Takoma Park",
+    "CHEVY CHASE" = "Chevy Chase", "OLNEY" = "Olney", "BURTONSVILLE" = "Burtonsville", "DERWOOD" = "Derwood",
+    "POOLESVILLE" = "Poolesville", "BROOKEVILLE" = "Brookeville", "CLARKSBURG" = "Clarksburg", "SPENCERVILLE" = "Spencerville",
+    "DAMASCUS" = "Damascus", "BOYDS" = "Boyds", "CABIN JOHN" = "Cabin John", "DICKERSON" = "Dickerson", "SANDY SPRING" = "Sandy Spring",
+    "GLEN ECHO" = "Glen Echo", "MONROVIA" = "Monrovia", "MOUNT AIRY" = "Mount Airy", "WOODBINE" = "Woodbine",
+    "HYATTSVILLE" = "Hyattsville", "LAUREL" = "Laurel", "ADELPHI" = "Adelphi", "LANHAM" = "Lanham", "WASHINGTON" = "Washington",
+    "NORTH BETHESDA" = "North Bethesda", "NORTH POTOMAC" = "North Potomac", "DARNESTOWN" = "Darnestown", "ASHTON" = "Ashton",
+    "BRINKLOW" = "Brinklow", "GARRETT PARK" = "Garrett Park", "LAYTONSVILLE" = "Laytonsville", "BEALLSVILLE" = "Beallsville",
+    "WASHINGTON GROVE" = "Washington Grove", "BELTSVILLE" = "Beltsville", "HIGHLAND" = "Highland", "COLESVILLE" = "Colesville",
+    "WHEATON" = "Wheaton", "FREDERICK" = "Frederick", "COLUMBIA" = "Columbia", "HAGERSTOWN" = "Hagerstown"
+  ))
+```
+
+
+```{r}
+unique(moco_crimes_clean2$city)
+```
+
+
+```{r}
+unique(moco_crimes_clean2$crime1)
+```
+
+```{r}
+unique(moco_crimes_clean2$crime2)
+```
+
+```{r}
+unique(moco_crimes_clean2$crime3)
+```
+
+```{r}
+moco_crimes_clean2 <- moco_crimes_clean2 %>%
+  mutate(
+    dispatch_date = mdy(dispatch_date),
+    start_date = mdy(start_date),
+    end_date = mdy(end_date),
+
+    dispatch_year = year(dispatch_date),
+    dispatch_month = month(dispatch_date),
+    dispatch_month_name = month(dispatch_date, label = TRUE, abbr = FALSE),
+
+    start_year = year(start_date),
+    start_month = month(start_date),
+    start_month_name = month(start_date, label = TRUE, abbr = FALSE)
+  )
+```
+
+
+```{r}
+moco_crime_monthly <- moco_crimes_clean2 %>%
+  group_by(dispatch_year, dispatch_month, dispatch_month_name) %>%
+  summarise(total_crimes = n(), .groups = "drop") %>%
+  mutate(month_date = make_date(dispatch_year, dispatch_month, 1))
+```
+
+```{r}
+moco_crimes_clean2 <- moco_crimes_clean2 %>%
+  mutate(season = case_when(dispatch_month %in% c(12, 1, 2) ~ "Winter", dispatch_month %in% c(3, 4, 5) ~ "Spring", dispatch_month %in% c(6, 7, 8) ~ "Summer",
+  dispatch_month %in% c(9, 10, 11) ~ "Fall"))
+```
+
+
+```{r}
+crime_seasonal_year <- moco_crimes_clean2 %>%
+  group_by(dispatch_year, season) %>%
+  summarise(total_crimes = n(), .groups = "drop")
+```
+
+```{r}
+crime_zip_year <- moco_crimes_clean2 %>%
+  group_by(zip_code, dispatch_year) %>%
+  summarise(total_crimes = n(), .groups = "drop")
+```
+
+```{r}
+crime_zip_year <- crime_zip_year %>%
+  mutate(zip_code = as.factor(zip_code))
+```
+
+```{r}
+ggplot(moco_crime_monthly, aes(x = month_date, y = total_crimes)) +
+  
+  # monthly crime trend line
+  geom_line(color = "#4032E3", linewidth = 0.8) +
+
+  # COVID lockdown begins
+  geom_vline(
+    xintercept = as.Date("2020-03-15"),
+    linetype = "dashed",
+    color = "#D00000",
+    linewidth = 0.4
+  ) +
+
+
+  # end of dataset line
+  geom_vline(
+    xintercept = as.Date("2026-03-01"),
+    linetype = "dotted",
+    color = "black",
+    linewidth = 0.4
+  ) +
+
+  # lockdown annotation
+  annotate(
+    "text",
+    x = as.Date("2020-03-15"),
+    y = min(moco_crime_monthly$total_crimes) + 500,
+    label = "COVID-19 Lockdown Begins",
+    color = "#D00000",
+    angle = 90,
+    vjust = -1,
+    size = 3
+  ) +
+  
+  # end of dataset annotation
+  annotate("text", x = as.Date("2026-03-01"), y = min(moco_crime_monthly$total_crimes) + 500,
+    label = "End of Data Set", color = "black", angle = 90, vjust = -1, size = 3) +
+
+  labs(
+    title = "Monthly Crime Trends in Montgomery County", x = "Year", y = "Number of Crimes", caption = "Source: data.montgomerycountymd.gov") +
+
+  theme_linedraw() +
+
+  theme(plot.title = element_text(hjust = 0.5, face = "bold", size = 16),
+
+    plot.caption = element_text(size = 8, face = "italic"))
+```
+
+```{r}
+crime_places <- moco_crimes_clean2 %>%
+  group_by(place) %>%
+  summarise(total_crimes = n(), .groups = "drop") %>%
+  arrange(desc(total_crimes)) %>%
+  slice_head(n = 10)
+```
+
+```{r}
+ggplot(crime_places,
+       aes(x = reorder(place, total_crimes), y = total_crimes, fill = reorder(place, total_crimes))) +
+
+  geom_col() +
+
+  coord_flip() +
+
+  geom_text(aes(label = total_crimes), hjust = -0.1, size = 2.5) +
+
+  scale_y_continuous(limits = c(0, max(crime_places$total_crimes) * 1.08)) +
+
+  scale_fill_manual(values = c("#80FFDB",  "#72EFDD", "#64DFDF", "#56CFE1", "#48BFE3", "#4EA8DE", "#5390D9", "#5E60CE", "#4032E3", "#7400B8")) +
+
+  labs(title = "Top 10 Locations of Crime by Frequency", x = "Location", y = "Number of Crimes", caption = "Source: data.montgomerycountymd.gov") +
+
+  theme_linedraw() +
+
+  theme(legend.position = "none")
+```
+
+```{r}
+
+# keep only top 6 most common crime2 categories
+top_crimes <- moco_crimes_clean2 %>%
+  count(crime2, sort = TRUE) %>%
+  slice_head(n = 6) %>%
+  pull(crime2)
+
+crime_map_data <- moco_crimes_clean2 %>%
+  filter(crime2 %in% top_crimes)
+
+# color palette
+pal <- colorFactor(
+  palette = c(
+    "#7400B8",
+    "#5E60CE",
+    "#5390D9",
+    "#48BFE3",
+    "#64DFDF",
+    "#80FFDB"
+  ),
+  domain = crime_map_data$crime2
+)
+
+leaflet(crime_map_data) %>%
+  
+  addTiles() %>%
+  
+  addCircleMarkers(
+    lng = ~longitude,
+    lat = ~latitude,
+    
+    color = ~pal(crime2),
+    
+    radius = 3,
+    stroke = FALSE,
+    fillOpacity = 0.6,
+    
+    popup = ~paste(
+      "<b>Crime Type:</b>", crime2,
+      "<br><b>City:</b>", city,
+      "<br><b>ZIP Code:</b>", zip_code,
+      "<br><b>Place:</b>", place
+    )
+  ) %>%
+  
+  addLegend(
+    "bottomright",
+    pal = pal,
+    values = ~crime2,
+    title = "Crime Type",
+    opacity = 1
+  )
+```
+
+```{r}
+season_summary <- moco_crimes_clean2 %>%
+  group_by(season) %>%
+  summarise(total_crimes = n(), .groups = "drop")
+
+season_summary$season <- factor(
+  season_summary$season,
+  levels = c("Winter", "Spring", "Summer", "Fall")
+)
+```
+
+```{r}
+ggplot(season_summary,
+       aes(x = season,
+           y = total_crimes,
+           fill = season)) +
+  
+  geom_col(width = 0.7) +
+  
+  geom_text(aes(label = total_crimes), vjust = -0.5, size = 2.5) +
+  
+  scale_fill_manual(values = c("Spring" = "#64DFDF", "Summer" = "#48BFE3", "Fall" = "#5390D9", "Winter" = "#5E60CE")) +
+  
+  labs(title = "Crime Frequency by Season", x = "Season", y = "Number of Crimes", caption = "Source: data.montgomerycountymd.gov") +
+  
+  theme_linedraw() +
+  
+  theme(legend.position = "none", plot.title = element_text(hjust = 0.5, face = "bold", size = 16), plot.caption = element_text(hjust = 0, face = "italic", size = 8))
+```
+
+```{r}
+city_summary <- moco_crimes_clean2 %>%
+  group_by(city) %>%
+  summarise(total_crimes = n(), .groups = "drop") %>%
+  arrange(desc(total_crimes)) %>%
+  slice_head(n = 10)
+```
+
+```{r}
+ggplot(city_summary,
+       aes(x = reorder(city, total_crimes), y = total_crimes, fill = total_crimes)) +
+  
+  geom_col() +
+  
+  coord_flip() +
+  
+  geom_text(aes(label = total_crimes), hjust = -0.1, size = 2.5) +
+  
+  scale_fill_gradient(low = "#80FFDB",high = "#7400B8") +
+  
+  scale_y_continuous(limits = c(0, max(city_summary$total_crimes) * 1.08)) +
+  
+  labs(title = "Top 10 Cities by Crime Frequency", x = "City", y = "Number of Crimes", caption = "Source: data.montgomerycountymd.gov") +
+  
+  theme_linedraw() +
+  
+  theme(legend.position = "none", plot.title = element_text(hjust = 0.5, face = "bold", size = 16), plot.caption = element_text(hjust = 0, face = "italic", size = 8))
+```
+```{r}
+crime_by_zip <- moco_crimes_clean2 %>%
+  group_by(zip_code) %>%
+  summarise(total_crimes = n(), .groups = "drop")
+
+housing_by_zip <- moco_housing_clean %>%
+  group_by(zip_code) %>% summarise(total_units = sum(as.numeric(unit_count), na.rm = TRUE), .groups = "drop")
+
+crime_by_zip$zip_code <- as.character(crime_by_zip$zip_code)
+housing_by_zip$zip_code <- as.character(housing_by_zip$zip_code)
+
+crime_housing <- left_join(crime_by_zip, housing_by_zip, by = "zip_code")
+```
+
+```{r}
+crime_model <- lm(total_crimes ~ total_units, data = crime_housing)
+
+summary(crime_model)
+```
+
+```{r}
+crime_season_table <- table(
+  moco_crimes_clean2$crime1,
+  moco_crimes_clean2$season
+)
+```
+
+```{r}
+chisq.test(crime_season_table)
+```
+```{r}
+crime_type_summary <- moco_crimes_clean2 %>%
+  group_by(crime1) %>%
+  summarise(
+    total_crimes = n(),
+    .groups = "drop") %>%
+  arrange(desc(total_crimes)) %>%
+  slice_head(n = 10)
+```
+
+
+```{r}
+ggplot(
+  crime_type_summary,
+  aes(
+    x = reorder(crime1, total_crimes),
+    y = total_crimes,
+    fill = total_crimes
+  )
+) +
+
+  geom_col() +
+
+  coord_flip() +
+
+  geom_text(
+    aes(label = total_crimes),
+    hjust = -0.1,
+    size = 2.5) +
+
+  scale_fill_gradient(
+    low = "#80FFDB",
+    high = "#7400B8"
+  ) +
+
+  scale_y_continuous(
+    limits = c(0, max(crime_type_summary$total_crimes) * 1.08)
+  ) +
+
+  labs(title = "Top 4 Crime Categories", x = "Crime Type", y = "Number of Crimes", caption = "Source: data.montgomerycountymd.gov") +
+
+  theme_linedraw() +
+
+  theme(
+    legend.position = "none",
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 16))
+```
+
+```{r}
+housing_structure <- moco_housing_clean %>%
+  group_by(structure_type) %>%
+  summarise(
+    total_units = sum(as.numeric(unit_count), na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  arrange(desc(total_units)) %>%
+  slice_head(n = 10)
+```
+
+```{r}
+# keep only top 5 most common housing structure types
+top_structures <- moco_housing_clean %>%
+  count(structure_type, sort = TRUE) %>%
+  slice_head(n = 5) %>%
+  pull(structure_type)
+
+housing_map_data <- moco_housing_clean %>%
+  filter(
+    structure_type %in% top_structures,
+    !is.na(latitude),
+    !is.na(longitude)
+  )
+
+# color palette
+pal_housing <- colorFactor(
+  palette = c(
+    "#7400B8",
+    "#5E60CE",
+    "#5390D9",
+    "#48BFE3",
+    "#80FFDB"
+  ),
+  domain = housing_map_data$structure_type
+)
+
+# leaflet map
+leaflet(housing_map_data) %>%
+  
+  addTiles() %>%
+  
+  addCircleMarkers(
+    lng = ~longitude,
+    lat = ~latitude,
+    
+    color = ~pal_housing(structure_type),
+    
+    radius = 3,
+    stroke = FALSE,
+    fillOpacity = 0.6,
+    
+    popup = ~paste(
+      "<b>Structure Type:</b>", structure_type,
+      "<br><b>City:</b>", city,
+      "<br><b>ZIP Code:</b>", zip_code,
+      "<br><b>Units:</b>", unit_count
+    )
+  ) %>%
+  
+  addLegend(
+    "bottomright",
+    pal = pal_housing,
+    values = ~structure_type,
+    title = "Housing Type",
+    opacity = 1
+  )
+```
+
+
+```{r}
+ggplot(housing_structure, aes(x = reorder(structure_type, total_units), y = total_units, fill = total_units)) +
+
+  geom_col() +
+
+  coord_flip() +
+
+  geom_text(
+    aes(label = total_units),
+    hjust = -0.1,
+    size = 2.5) +
+
+  scale_fill_gradient(
+    low = "#80FFDB",
+    high = "#7400B8") +
+
+  scale_y_continuous(
+    limits = c(0, max(housing_structure$total_units) * 1.08)) +
+
+  labs(title = "Housing Units by Structure Type", x = "Structure Type", y = "Total Housing Units", caption = "Source: data.montgomerycountymd.gov") +
+
+  theme_linedraw() +
+
+  theme(legend.position = "none", plot.title = element_text(hjust = 0.5, face = "bold", size = 16),
+
+  plot.caption = element_text(face = "italic",size = 8))
+
+```
+
+```{r}
+moco_housing_clean <- moco_housing_clean %>%
+  
+  mutate(latitude = sub(".*\\(([0-9.-]+),.*", "\\1", location),
+
+    longitude = sub(".*,[ ]*([-0-9.]+)\\).*", "\\1", location),
+
+    latitude = as.numeric(latitude),
+    longitude = as.numeric(longitude))
+```
+
+
+
+```{r}
+crime_model <- lm(total_crimes ~ total_units, data = crime_housing)
+```
+
+```{r}
+autoplot(crime_model)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
